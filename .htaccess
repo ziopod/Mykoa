@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Turn on URL rewriting
 RewriteEngine On
 
@@ -23,3 +24,7 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule .* index.php/$0 [PT]
 # En cas de "Internal Server Error" ou "No Input File Specified" changer avec
 # RewriteRule .* index.php [L]
+=======
+#Environemement PHP 5
+SetEnv PHP_VER 5
+>>>>>>> 802aded70b8226f681a69e67fed47ebabdbb20cc
