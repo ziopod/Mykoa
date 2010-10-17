@@ -8,7 +8,7 @@
  * @see  http://kohanaframework.org/guide/using.configuration
  * @see  http://php.net/timezones
  */
-date_default_timezone_set('America/Chicago');
+date_default_timezone_set('Europe/Paris');
 
 /**
  * Set the default locale.
@@ -16,7 +16,7 @@ date_default_timezone_set('America/Chicago');
  * @see  http://kohanaframework.org/guide/using.configuration
  * @see  http://php.net/setlocale
  */
-setlocale(LC_ALL, 'en_US.utf-8');
+setlocale(LC_ALL, 'fr_FR.utf-8');
 
 /**
  * Enable the Kohana auto-loader.
@@ -37,13 +37,10 @@ ini_set('unserialize_callback_func', 'spl_autoload_call');
 //-- Configuration and initialization -----------------------------------------
 
 /**
- * Set Kohana::$environment if $_ENV['KOHANA_ENV'] has been supplied.
- * 
- */
-if (isset($_ENV['KOHANA_ENV']))
-{
-	Kohana::$environment = $_ENV['KOHANA_ENV'];
-}
+* Set the environment string by the domain (default to 'development')
+* @add at   http://kerkness.ca/wiki/doku.php?id=setting_up_production_environment
+*/
+Kohana::$environment = ($_SERVER['SERVER_NAME'] !== 'localhost') ? Kohana::PRODUCTION : Kohana::DEVELOPMENT;
 
 /**
  * Initialize Kohana, setting the default options.
@@ -58,8 +55,15 @@ if (isset($_ENV['KOHANA_ENV']))
  * - boolean  profile     enable or disable internal profiling               TRUE
  * - boolean  caching     enable or disable internal caching                 FALSE
  */
+/**
+* Initialise Kohana based environment
+* @add at   http://kerkness.ca/wiki/doku.php?id=setting_up_production_environment
+*/
 Kohana::init(array(
-	'base_url'   => '/',
+	'base_url'   => '/mykoa',
+	'index_file' => NULL,
+	'profile'    => Kohana::$environment !== Kohana::PRODUCTION,
+	'caching'    => Kohana::$environment !== Kohana::PRODUCTION
 ));
 
 /**
@@ -94,18 +98,55 @@ Kohana::modules(array(
  */
 Route::set('default', '(<controller>(/<action>(/<id>)))')
 	->defaults(array(
-		'controller' => 'welcome',
+		'controller' => 'index',
 		'action'     => 'index',
 	));
 
-if ( ! defined('SUPPRESS_REQUEST'))
+
+
+/**
+* Execute the main request using PATH_INFO. if no URI source is specified
+* the URI will by automatically detected
+* @add at   http://kerkness.ca/wiki/doku.php?id=setting_up_production_environment
+*/
+$request = Request::instance($_SERVER['PATH_INFO']);
+
+try
 {
-	/**
-	 * Execute the main request. A source of the URI can be passed, eg: $_SERVER['PATH_INFO'].
-	 * If no source is specified, the URI will be automatically detected.
-	 */
-	echo Request::instance()
-		->execute()
-		->send_headers()
-		->response;
+	// Attempt to execute the response
+	$request->execute();
 }
+catch (Exception $e)
+{
+	if (Kohana::$environment == 'development')
+	{
+		// Just re-throw the exception
+		throw $e;
+	}
+	
+	// Log the error
+	Kohana::$log->add(Kohana::ERROR, Kohana::exception_text($e));
+	
+	// Create à 404 response
+	$request->status = 404;
+	$request->response = View::factory('template')
+		->set('title', '4O4')
+		->set('content', View::factory('errors/404'));
+}
+
+if ($request->send_headers()->response)
+{
+	// Get the total memory and execution time
+	$total = array(
+		'{memory_usage}' => number_format((memory_get_peak_usage() - KOHANA_START_MEMORY) / 1024, 2).'KB',
+		'{execution_time}' => number_format(microtime(TRUE) - KOHANA_START_TIME, 5).' seconds'
+	);
+	
+	// Insert the total into response
+	$request->response = str_replace(array_keys($total), $total, $request->response);
+}
+
+/**
+* Display the request response
+*/
+echo $request->response;
