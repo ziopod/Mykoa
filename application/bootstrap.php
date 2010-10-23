@@ -40,8 +40,8 @@ ini_set('unserialize_callback_func', 'spl_autoload_call');
 * Set the environment string by the domain (default to 'development')
 * @add at   http://kerkness.ca/wiki/doku.php?id=setting_up_production_environment
 */
-Kohana::$environment = ($_SERVER['SERVER_NAME'] !== 'localhost') ? Kohana::PRODUCTION : Kohana::DEVELOPMENT;
-
+//Kohana::$environment = ($_SERVER['SERVER_NAME'] !== 'localhost') ? Kohana::PRODUCTION : Kohana::DEVELOPMENT;
+define('IN_PRODUCTION', $_SERVER['SERVER_NAME'] !== 'localhost');
 /**
  * Initialize Kohana, setting the default options.
  *
@@ -63,7 +63,8 @@ Kohana::init(array(
 	'base_url'   => '/mykoa',
 	'index_file' => NULL,
 	'profile'    => Kohana::$environment !== Kohana::PRODUCTION,
-	'caching'    => Kohana::$environment !== Kohana::PRODUCTION
+	'caching'    => Kohana::$environment !== Kohana::PRODUCTION,
+	'errors'     => Kohana::$environment !== Kohana::PRODUCTION
 ));
 
 /**
@@ -80,7 +81,7 @@ Kohana::$config->attach(new Kohana_Config_File);
  * Enable modules. Modules are referenced by a relative or absolute path.
  */
 Kohana::modules(array(
-	// 'auth'       => MODPATH.'auth',       // Basic authentication
+	'auth'       => MODPATH.'auth',       // Basic authentication
 	// 'cache'      => MODPATH.'cache',      // Caching with multiple backends
 	// 'codebench'  => MODPATH.'codebench',  // Benchmarking tool
 	'database'   => MODPATH.'database',   // Database access
@@ -96,14 +97,38 @@ Kohana::modules(array(
  * Set the routes. Each route must have a minimum of a name, a URI and a set of
  * defaults for the URI.
  */
+Route::set('runtimes', 'runtimes(/<controller>(/<action>(/<id>)))')
+	->defaults(array(
+		'directory' => 'runtimes',
+		'controller' => 'msgboard',
+		'action' => 'index'
+	));
+Route::set('admin', 'admin(/<controller>(/<action>(/<id>)))')
+	->defaults(array(
+		'directory' => 'admin',
+		'controller' => 'dashboard',
+		'action' => 'index'
+	));
+Route::set('page', '<page>',
+	array(
+		'page' => 'page_test|about|faq|locations'
+	))
+	->defaults(array(
+	'controller' => 'page',
+	'action'     => 'load'
+	));
+Route::set('auth', '<action>',
+	array(
+		'action' => 'login|logout'
+	))
+	->defaults(array(
+		'controller' => 'auth'
+	));
 Route::set('default', '(<controller>(/<action>(/<id>)))')
 	->defaults(array(
-		'controller' => 'index',
+		'controller' => 'home',
 		'action'     => 'index',
 	));
-
-
-
 /**
 * Execute the main request using PATH_INFO. if no URI source is specified
 * the URI will by automatically detected
